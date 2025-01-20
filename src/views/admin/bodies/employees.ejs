@@ -1,0 +1,419 @@
+<h2>Employee Management</h2>
+<input type="text" class="search-bar" placeholder="Search employees..." oninput="searchEmployee(this.value)">
+<link rel="stylesheet" href="../../../public/admin/css/admin.css">
+<!-- Employee List -->
+<div id="employee-list">
+    <h3>Employee List</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <select id="filterBranch" onchange="filterEmployees()">
+            <option value="">All Branches</option>
+            <% branches.forEach(branch=> { %>
+                <option value="<%= branch.branch_id %>">
+                    <%= branch.branch_name %>
+                </option>
+                <% }); %>
+        </select>
+
+        <select id="filterDepartment" onchange="filterEmployees()">
+            <option value="">All Departments</option>
+            <% departments.forEach(department=> { %>
+                <option value="<%= department.department_id %>">
+                    <%= department.department_name %>
+                </option>
+                <% }); %>
+        </select>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: center;">ID</th>
+                <th style="text-align: center;">Full Name</th>
+                <th style="text-align: center;">DOB</th>
+                <th style="text-align: center;">Gender</th>
+                <th style="text-align: center;">Phone Number</th>
+                <th style="text-align: center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="employeeTableBody">
+            <% employees.forEach(employee=> { %>
+                <tr class="employee-row" data-branch-id="<%= employee.branch_id %>"
+                    data-dept-id="<%= employee.dept_id %>">
+                    <td style="text-align: center;">
+                        <%= employee.employee_id %>
+                    </td>
+                    <td style="text-align: center;">
+                        <%= employee.name %>
+                    </td>
+                    <td style="text-align: center;">
+                        <%= employee.DOB %>
+                    </td>
+                    <td style="text-align: center;">
+                        <%= employee.gender %>
+                    </td>
+                    <td style="text-align: center;">
+                        <%= employee.phone_number %>
+                    </td>
+                    <td>
+                        <a href="/admin/employees/edit/<%= employee.employee_id %>" class="button">Edit</a>
+                        <a href="/admin/employees/delete/<%= employee.employee_id %>" class="button"
+                            onclick="return confirm('Are you sure you want to delete this branch?');">Delete</a>
+                        <button class="button"
+                            onclick="showTransferModal('<%= employee.employee_id %>')">Transfer</button>
+                    </td>
+                </tr>
+                <% }); %>
+        </tbody>
+        <div id="employeePagination" class="pagination">
+            <!-- Các nút phân trang sẽ được thêm động ở đây -->
+        </div>
+    </table>
+    <div id="employeePagination" class="pagination"></div>
+    <button class="btn-primary" onclick="showEmployeeForm()">Add Employee</button>
+</div>
+
+
+<!-- Employee Form (Initially Hidden) -->
+<div id="employee-form" style="display: none;">
+    <h3>Employee Details</h3>
+    <form action="/admin/employees/add" method="POST">
+        <div class="form-group">
+            <label for="employee_id">Employee ID:</label>
+            <input type="number" id="employee_id" name="employee_id" required>
+        </div>
+
+        <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="DOB">Date of Birth:</label>
+            <input type="date" id="DOB" name="DOB" required>
+        </div>
+
+        <div class="form-group">
+            <label for="gender">Gender:</label>
+            <select id="gender" name="gender" required>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+                <option value="O">Other</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="dept_id">Department:</label>
+            <select id="dept_id" name="dept_id" required>
+                <% departments.forEach(department=> { %>
+                    <option value="<%= department.department_id %>">
+                        <%= department.department_name %>
+                    </option>
+                    <% }); %>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="address">Address:</label>
+            <input type="text" id="address" name="address" required>
+        </div>
+
+        <div class="form-group">
+            <label for="phone_number">Phone Number:</label>
+            <input type="text" id="phone_number" name="phone_number" required>
+        </div>
+
+        <div class="form-group">
+            <label for="user_id">User ID:</label>
+            <input type="number" id="user_id" name="user_id" required>
+        </div>
+
+        <button type="submit">Save</button>
+    </form>
+</div>
+
+<!-- Salary Management Section Inside Employee Management -->
+<div id="salaryManagement">
+    <h3>Salary Management</h3>
+    <form id="salaryForm" onsubmit="updateSalary(event)">
+        <div class="form-group">
+            <label for="departmentName">Department Name:</label>
+            <select id="departmentName" name="departmentName" required onchange="displayCurrentSalary()">
+                <option value="">Select Department</option>
+                <% departments.forEach(department=> { %>
+                    <option value="<%= department.department_name %>" data-salary="<%= department.salary %>">
+                        <%= department.department_name %>
+                    </option>
+                    <% }); %>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="newSalary">New Salary:</label>
+            <input type="number" id="newSalary" name="newSalary" min="0" required placeholder="Enter new salary">
+        </div>
+        <div id="currentSalaryDisplay" style="margin-top: 10px;">
+            <!-- Current salary will be displayed here -->
+        </div>
+        <button type="submit" class="btn-primary">Update Salary</button>
+    </form>
+    <div id="salaryUpdateMessage" style="margin-top: 10px;"></div>
+</div>
+
+
+<div id="transferModal" style="display: none;" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeTransferModal()">&times;</span>
+        <h3>Transfer Employee</h3>
+        <form id="transferEmployeeForm" onsubmit="submitTransferForm(event)">
+            <div class="form-group">
+                <label for="modalEmployeeId">Employee ID:</label>
+                <input type="text" id="modalEmployeeId" name="employeeId" readonly>
+            </div>
+            <div class="form-group">
+                <label for="modalNewBranchId">New Branch ID:</label>
+                <input type="number" id="modalNewBranchId" name="newBranchId" required>
+            </div>
+            <button type="submit" class="btn-primary">Transfer</button>
+        </form>
+    </div>
+</div>
+
+<script>
+
+    const rowsPerPage = 10; // Số lượng nhân viên mỗi trang
+    let currentPage = 1; // Trang hiện tại
+
+    function displayCurrentSalary() {
+        const departmentSelect = document.getElementById("departmentName");
+        const selectedOption = departmentSelect.options[departmentSelect.selectedIndex];
+
+        // Lấy giá trị lương hiện tại từ data-salary
+        const currentSalary = selectedOption.getAttribute("data-salary");
+
+        // Hiển thị lương hiện tại
+        const salaryDisplay = document.getElementById("currentSalaryDisplay");
+        if (currentSalary) {
+            salaryDisplay.innerHTML = `<strong>Current Salary:</strong> $${currentSalary}`;
+        } else {
+            salaryDisplay.innerHTML = "";
+        }
+    }
+
+
+    // Hàm để hiển thị dữ liệu cho trang hiện tại
+    function displayPage(page) {
+        const rows = document.querySelectorAll('#employeeTableBody .employee-row');
+        const totalRows = rows.length;
+        const totalPages = Math.ceil(totalRows / rowsPerPage);
+
+        // Đảm bảo trang hợp lệ
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+
+        // Ẩn tất cả các hàng
+        rows.forEach(row => row.style.display = 'none');
+
+        // Hiển thị các hàng của trang hiện tại
+        const startIndex = (page - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+        for (let i = startIndex; i < endIndex && i < totalRows; i++) {
+            rows[i].style.display = '';
+        }
+
+        // Cập nhật nút phân trang
+        updatePaginationButtons(page, totalPages);
+    }
+
+    // Hàm cập nhật các nút phân trang
+    function updatePaginationButtons(page, totalPages) {
+        const paginationContainer = document.getElementById('employeePagination');
+        paginationContainer.innerHTML = '';
+
+        // Nút Previous
+        const prevButton = document.createElement('button');
+        prevButton.textContent = 'Previous';
+        prevButton.disabled = page === 1;
+        prevButton.onclick = () => displayPage(page - 1);
+        paginationContainer.appendChild(prevButton);
+
+        // Các nút số trang
+        for (let i = 1; i <= totalPages; i++) {
+            const pageButton = document.createElement('button');
+            pageButton.textContent = i;
+            pageButton.className = page === i ? 'active' : '';
+            pageButton.onclick = () => displayPage(i);
+            paginationContainer.appendChild(pageButton);
+        }
+
+        // Nút Next
+        const nextButton = document.createElement('button');
+        nextButton.textContent = 'Next';
+        nextButton.disabled = page === totalPages;
+        nextButton.onclick = () => displayPage(page + 1);
+        paginationContainer.appendChild(nextButton);
+    }
+
+    // Gọi hàm phân trang khi trang được tải
+    document.addEventListener('DOMContentLoaded', () => {
+        displayPage(1);
+    });
+
+    // Populate filters
+    function populateFilters() {
+        const branchSelect = document.getElementById('filterBranch');
+        const departmentSelect = document.getElementById('filterDepartment');
+
+        branches.forEach(branch => {
+            const option = document.createElement('option');
+            option.value = branch_id;
+            option.textContent = branch_name;
+            branchSelect.appendChild(option);
+        });
+
+        departments.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = department_id;
+            option.textContent = department_name;
+            departmentSelect.appendChild(option);
+        });
+    }
+
+    // Render employee rows
+    function renderEmployees() {
+        const tbody = document.getElementById('employeeTableBody');
+        tbody.innerHTML = '';
+        employees.forEach(employee => {
+            const row = document.createElement('tr');
+            row.classList.add('employee-row');
+            row.setAttribute('data-branch-id', employee.branch_id);
+            row.setAttribute('data-dept-id', employee.dept_id);
+
+            row.innerHTML = `
+                    <td>${employee.id}</td>
+                    <td>${employee.name}</td>
+                    <td>${employee.DOB}</td>
+                    <td>${employee.gender}</td>
+                    <td>${employee.dept_id}</td>
+                    <td>${employee.phone}</td>
+                `;
+
+            tbody.appendChild(row);
+        });
+
+        displayPage(1);
+    }
+
+    // Filter employees by branch and department
+    function filterEmployees() {
+        const branchFilter = document.getElementById('filterBranch').value;
+        const departmentFilter = document.getElementById('filterDepartment').value;
+        const rows = document.querySelectorAll('.employee-row');
+
+        rows.forEach(row => {
+            const branchId = row.getAttribute('data-branch-id');
+            const deptId = row.getAttribute('data-dept-id');
+
+            const matchesBranch = !branchFilter || branchId === branchFilter;
+            const matchesDept = !departmentFilter || deptId === departmentFilter;
+
+            row.style.display = matchesBranch && matchesDept ? '' : 'none';
+        });
+    }
+
+    // Function to show/hide the employee form
+    function showEmployeeForm() {
+        const form = document.getElementById("employee-form");
+        form.style.display = form.style.display === "none" ? "block" : "none";
+    }
+
+    // Function to update salary
+    async function updateSalary(event) {
+        event.preventDefault(); // Prevent default form submission
+
+        const departmentName = document.getElementById("departmentName").value.trim();
+        const newSalary = parseFloat(document.getElementById("newSalary").value.trim());
+
+        // Validate inputs
+        if (!departmentName || newSalary <= 0) {
+            document.getElementById("salaryUpdateMessage").innerHTML =
+                "<p style='color: red;'>Please enter a valid department name and salary.</p>";
+            return;
+        }
+
+        try {
+            // Send request to the server
+            const response = await fetch('/admin/update-salary', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ departmentName, newSalary }),
+            });
+
+            const result = await response.json();
+
+            // Display result message
+            if (result.success) {
+                document.getElementById("salaryUpdateMessage").innerHTML =
+                    `<p style='color: green;'>${result.message}</p>`;
+            } else {
+                document.getElementById("salaryUpdateMessage").innerHTML =
+                    `<p style='color: red;'>${result.message}</p>`;
+            }
+        } catch (error) {
+            document.getElementById("salaryUpdateMessage").innerHTML =
+                `<p style='color: red;'>An error occurred: ${error.message}</p>`;
+        }
+    }
+
+    // Show transfer modal
+    function showTransferModal(employeeId) {
+        document.getElementById("modalEmployeeId").value = employeeId; // Set Employee ID
+        document.getElementById("transferModal").style.display = "flex";
+    }
+
+    // Close transfer modal
+    function closeTransferModal() {
+        document.getElementById("transferModal").style.display = "none";
+    }
+
+    // Submit transfer form
+    async function submitTransferForm(event) {
+        event.preventDefault(); // Ngăn hành động submit mặc định
+
+        const employeeId = document.getElementById('modalEmployeeId').value.trim();
+        const newBranchId = document.getElementById('modalNewBranchId').value.trim();
+
+        try {
+            const response = await fetch('/admin/employees/transfer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employeeId, newBranchId }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert(result.message);
+                closeTransferModal();
+                location.reload(); // Reload page to update the list
+            } else {
+                alert('Error: ' + result.message);
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+
+    // Function to search employees by name
+    function searchEmployee(searchTerm) {
+        const rows = document.querySelectorAll('#employeeTableBody .employee-row');
+        searchTerm = searchTerm.toLowerCase(); // Convert to lowercase for case-insensitive search
+
+        rows.forEach(row => {
+            const name = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            if (name.includes(searchTerm)) {
+                row.style.display = ''; // Show row if search term matches
+            } else {
+                row.style.display = 'none'; // Hide row if search term doesn't match
+            }
+        });
+    }
+
+</script>
